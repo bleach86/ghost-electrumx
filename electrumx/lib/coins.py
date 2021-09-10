@@ -3994,3 +3994,62 @@ class Syscoin(AuxPowMixin, Coin):
     RPC_PORT = 8370
     REORG_LIMIT = 2000
     CHUNK_SIZE = 360
+
+
+class Particl(Coin):
+    NAME = "Particl"
+    SHORTNAME = "PART"
+    NET = "mainnet"
+    BASIC_HEADER_SIZE = 112
+    XPUB_VERBYTES = bytes.fromhex("696e82d1")
+    XPRV_VERBYTES = bytes.fromhex("8f1daeb8")
+    P2PKH_VERBYTE = bytes.fromhex("38")
+    P2SH_VERBYTES = (bytes.fromhex("3c"),)
+    WIF_BYTE = bytes.fromhex("6c")
+    GENESIS_HASH = ('0000ee0784c195317ac95623e22fddb8'
+                    'c7b8825dc3998e0bb924d66866eccf4c')
+    DESERIALIZER = lib_tx.DeserializerParticl
+    TX_COUNT = 1176142
+    TX_COUNT_HEIGHT = 992790
+    TX_PER_BLOCK = 10
+    RPC_PORT = 51735
+    REORG_LIMIT = 1000
+
+    @classmethod
+    def genesis_block(cls, block):
+        ''' Check the Genesis block is the right one for this coin.
+            Return the block with it's spendable coinbase txns.
+        '''
+        header = cls.block_header(block, 0)
+        header_hex_hash = hash_to_hex_str(cls.header_hash(header))
+        if header_hex_hash != cls.GENESIS_HASH:
+            raise CoinError(f'genesis block has hash {header_hex_hash} '
+                            f'expected {cls.GENESIS_HASH}')
+
+        return block
+
+
+class ParticlTestnet(Particl):
+    SHORTNAME = "tPART"
+    NET = "testnet"
+    XPUB_VERBYTES = bytes.fromhex("043587cf")
+    XPRV_VERBYTES = bytes.fromhex("04358394")
+    P2PKH_VERBYTE = bytes.fromhex("76")
+    P2SH_VERBYTES = (bytes.fromhex("7a"))
+    WIF_BYTE = bytes.fromhex("2e")
+    GENESIS_HASH = ('0000594ada5310b367443ee0afd4fa3d'
+                    '0bbd5850ea4e33cdc7d6a904a7ec7c90')
+    TX_COUNT = 1000837
+    TX_COUNT_HEIGHT = 940090
+    TX_PER_BLOCK = 2
+    RPC_PORT = 51935
+    REORG_LIMIT = 1000
+
+
+class ParticlRegtest(ParticlTestnet):
+    NET = "regtest"
+    GENESIS_HASH = ('6cd174536c0ada5bfa3b8fde16b98ae5'
+                    '08fff6586f2ee24cf866867098f25907')
+    PEERS = []
+    TX_COUNT = 1
+    TX_COUNT_HEIGHT = 1

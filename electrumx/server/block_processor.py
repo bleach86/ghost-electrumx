@@ -447,6 +447,8 @@ class BlockProcessor:
             for txin in tx.inputs:
                 if txin.is_generation():
                     continue
+                if txin._is_anon_input():
+                    continue
                 cache_value = spend_utxo(txin.prev_hash, txin.prev_idx)
                 undo_info_append(cache_value)
                 append_hashX(cache_value[:HASHX_LEN])
