@@ -540,6 +540,8 @@ class BlockProcessor:
             for txin in reversed(tx.inputs):
                 if txin.is_generation():
                     continue
+                if txin._is_anon_input():
+                    continue
                 n -= undo_entry_len
                 undo_item = undo_info[n:n + undo_entry_len]
                 put_utxo(txin.prev_hash + pack_le_uint32(txin.prev_idx), undo_item)
