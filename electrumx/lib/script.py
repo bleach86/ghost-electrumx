@@ -59,9 +59,11 @@ OpCodes = Enumeration("Opcodes", [
     "OP_CODESEPARATOR", "OP_CHECKSIG", "OP_CHECKSIGVERIFY", "OP_CHECKMULTISIG",
     "OP_CHECKMULTISIGVERIFY",
     "OP_NOP1",
-    "OP_CHECKLOCKTIMEVERIFY", "OP_CHECKSEQUENCEVERIFY"
+    "OP_CHECKLOCKTIMEVERIFY", "OP_CHECKSEQUENCEVERIFY",
+    "OP_NOP4", "OP_NOP5", "OP_NOP6", "OP_NOP7", "OP_NOP8",
+    "OP_ISCOINSTAKE",
+    "OP_NOP10",
 ])
-
 
 # Paranoia to make it hard to create bad scripts
 assert OpCodes.OP_DUP == 0x76
@@ -70,6 +72,7 @@ assert OpCodes.OP_EQUAL == 0x87
 assert OpCodes.OP_EQUALVERIFY == 0x88
 assert OpCodes.OP_CHECKSIG == 0xac
 assert OpCodes.OP_CHECKMULTISIG == 0xae
+assert OpCodes.OP_ISCOINSTAKE == 0xb8
 
 
 def is_unspendable_legacy(script):

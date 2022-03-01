@@ -38,7 +38,7 @@ from hashlib import sha256
 from typing import Sequence, Tuple
 
 import electrumx.lib.util as util
-from electrumx.lib.hash import Base58, double_sha256, hash_to_hex_str
+from electrumx.lib.hash import Base58, double_sha256, hash_to_hex_str, ripemd
 from electrumx.lib.hash import HASHX_LEN, hex_str_to_hash
 from electrumx.lib.script import (_match_ops, Script, ScriptError,
                                   ScriptPubKey, OpCodes)
@@ -166,6 +166,21 @@ class Coin:
     @classmethod
     def hashX_from_script(cls, script):
         '''Returns a hashX from a script.'''
+
+        if len(script) == 37 and script[1] == OpCodes.OP_SHA256:
+            # Return the expected hash for the hash160 spend address
+            hash256 = script[3:3 + 32]
+            hash160 = ripemd(hash256)
+            script = cls.hash160_to_P2PKH_script(hash160)
+            return sha256(script).digest()[:HASHX_LEN]
+
+        if len(script) == 66 and script[0] == OpCodes.OP_ISCOINSTAKE:
+            # Return the expected hash for the hash160 spend address
+            hash256 = script[31:31 + 32]
+            hash160 = ripemd(hash256)
+            script = cls.hash160_to_P2PKH_script(hash160)
+            return sha256(script).digest()[:HASHX_LEN]
+
         return sha256(script).digest()[:HASHX_LEN]
 
     @staticmethod
