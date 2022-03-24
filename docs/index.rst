@@ -34,7 +34,7 @@ Authors and License
 ===================
 
 Neil Booth wrote the vast majority of the code; see :ref:`Authors`.
-Python version at least 3.7 is required.
+Python version at least 3.8 is required.
 
 The code is released under the `MIT Licence
 <https://github.com/spesmilo/electrumx/LICENCE>`_.
@@ -46,7 +46,7 @@ See :ref:`HOWTO`.
 
 There is also an `installer`_ available that simplifies the
 installation on various Linux-based distributions, and a `Dockerfile`_
-available .
+available.
 
 .. _installer: https://github.com/bauerj/electrumx-installer
 .. _Dockerfile: https://github.com/lukechilds/docker-electrumx
