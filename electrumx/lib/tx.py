@@ -1240,3 +1240,186 @@ class DeserializerPrimecoin(Deserializer):
         header_end = self.cursor
         self.cursor = start
         return self._read_nbytes(header_end - start)
+
+
+@dataclass
+class TxInputGhost:
+    '''Class representing a transaction input.'''
+    __slots__ = 'prev_hash', 'prev_idx', 'script', 'sequence', 'script_data', 'witness_data'
+    prev_hash: bytes
+    prev_idx: int
+    script: bytes
+    sequence: int
+    script_data: Sequence
+    witness_data: Sequence
+
+    ANON_MARKER = 0xffffffa0
+
+    def _is_anon_input(self):
+        return self.prev_idx == self.ANON_MARKER
+
+    def __str__(self):
+        script = self.script.hex()
+        prev_hash = hash_to_hex_str(self.prev_hash)
+        return (f"Input({prev_hash}, {self.prev_idx:d}, script={script}, "
+                f"sequence={self.sequence:d})")
+
+    def is_generation(self):
+        '''Test if an input is generation/coinbase like'''
+        return self.prev_idx == MINUS_1 and self.prev_hash == ZERO
+
+    def serialize(self):
+        return b''.join((
+            self.prev_hash,
+            pack_le_uint32(self.prev_idx),
+            pack_varbytes(self.script),
+            pack_le_uint32(self.sequence),
+        ))
+
+
+@dataclass
+class TxOutputGhost:
+    __slots__ = 'output_type', 'value', 'pk_script', 'data', 'pubkey', 'commitment', 'rangeproof'
+    output_type: int
+    value: int
+    pk_script: bytes
+    data: bytes
+    pubkey: bytes
+    commitment: bytes
+    rangeproof: bytes
+
+    OUTPUT_STANDARD = 1
+    OUTPUT_CT = 2
+    OUTPUT_RINGCT = 3
+    OUTPUT_DATA = 4
+
+    def __init__(self):
+        pass
+
+    def serialize(self, for_txid=False):
+        output_type_bytes = bytes((self.output_type,))
+        if self.output_type == self.OUTPUT_STANDARD:
+            return b''.join((
+                output_type_bytes,
+                pack_le_int64(self.value),
+                pack_varbytes(self.pk_script),
+            ))
+        elif self.output_type == self.OUTPUT_CT:
+            return b''.join((
+                output_type_bytes,
+                self.commitment,
+                pack_varbytes(self.data),
+                pack_varbytes(self.pk_script),
+                pack_varbytes(self.rangeproof if not for_txid else bytes()),
+            ))
+        elif self.output_type == self.OUTPUT_RINGCT:
+            return b''.join((
+                output_type_bytes,
+                self.pubkey,
+                self.commitment,
+                pack_varbytes(self.data),
+                pack_varbytes(self.rangeproof if not for_txid else bytes()),
+            ))
+        elif self.output_type == self.OUTPUT_DATA:
+            return output_type_bytes + pack_varbytes(self.data)
+        else:
+            raise ValueError('unknown output type')
+
+
+class DeserializerGhost(DeserializerSegWit):
+
+    OUTPUT_STANDARD = 1
+    OUTPUT_CT = 2
+    OUTPUT_RINGCT = 3
+    OUTPUT_DATA = 4
+
+    def _read_input(self):
+        txi = TxInputGhost(
+            self._read_nbytes(32),   # prev_hash
+            self._read_le_uint32(),  # prev_idx
+            self._read_varbytes(),   # script
+            self._read_le_uint32(),  # sequence
+            bytes(),
+            bytes()
+        )
+        if txi._is_anon_input():
+            fields = self._read_varint()
+            txi.script_data = []
+            for i in range(fields):
+                txi.script_data.append(self._read_varbytes())
+
+        return txi
+
+    def _read_output(self):
+        txo = TxOutputGhost()
+        txo.output_type = self._read_byte()
+
+        if txo.output_type == self.OUTPUT_STANDARD:
+            txo.value = self._read_le_int64()
+            txo.pk_script = self._read_varbytes()
+        elif txo.output_type == self.OUTPUT_CT:
+            txo.commitment = self._read_nbytes(33)
+            txo.data = self._read_varbytes()
+            txo.pk_script = self._read_varbytes()
+            txo.rangeproof = self._read_varbytes()
+            txo.value = 0
+        elif txo.output_type == self.OUTPUT_RINGCT:
+            txo.pubkey = self._read_nbytes(33)
+            txo.commitment = self._read_nbytes(33)
+            txo.data = self._read_varbytes()
+            txo.rangeproof = self._read_varbytes()
+            txo.pk_script = b'\x00\x6a'  # Set unspendable
+            txo.value = 0
+        elif txo.output_type == self.OUTPUT_DATA:
+            txo.data = self._read_varbytes()
+            txo.pk_script = b'\x00\x6a'  # Set unspendable
+            txo.value = 0
+        else:
+            raise ValueError('unknown output type')
+        return txo
+
+    def read_tx(self):
+        version = self._read_le_uint16()
+        locktime = self._read_le_uint32()
+
+        inputs = self._read_inputs()
+        outputs = self._read_outputs()
+
+        for txi in inputs:
+            txi.witness_data = self._read_witness_field()
+
+        return Tx(
+            version,
+            inputs,
+            outputs,
+            locktime
+        )
+
+    def _read_tx_parts(self):
+        start = self.cursor
+        version = self._read_le_uint16()
+        locktime = self._read_le_uint32()
+
+        inputs = self._read_inputs()
+        hash_bytes = self.binary[start:self.cursor]
+        outputs = self._read_outputs()
+
+        for txi in inputs:
+            txi.witness_data = self._read_witness_field()
+
+        hash_bytes += pack_varint(len(outputs))
+        for txo in outputs:
+            hash_bytes += txo.serialize(for_txid=True)
+
+        base_size = len(hash_bytes)
+        vsize = (1 * base_size + self.binary_length) // 2
+
+        tx = Tx(
+            version,
+            inputs,
+            outputs,
+            locktime
+        )
+
+        tx_hash = self.TX_HASH_FN(hash_bytes)
+        return tx, tx_hash, vsize

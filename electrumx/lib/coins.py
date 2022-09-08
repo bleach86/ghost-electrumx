@@ -38,7 +38,7 @@ from hashlib import sha256
 from typing import Sequence, Tuple
 
 import electrumx.lib.util as util
-from electrumx.lib.hash import Base58, double_sha256, hash_to_hex_str
+from electrumx.lib.hash import Base58, double_sha256, hash_to_hex_str, ripemd
 from electrumx.lib.hash import HASHX_LEN, hex_str_to_hash
 from electrumx.lib.script import (_match_ops, Script, ScriptError,
                                   ScriptPubKey, OpCodes)
@@ -166,6 +166,21 @@ class Coin:
     @classmethod
     def hashX_from_script(cls, script):
         '''Returns a hashX from a script.'''
+
+        if len(script) == 37 and script[1] == OpCodes.OP_SHA256:
+            # Return the expected hash for the hash160 spend address
+            hash256 = script[3:3 + 32]
+            hash160 = ripemd(hash256)
+            script = cls.hash160_to_P2PKH_script(hash160)
+            return sha256(script).digest()[:HASHX_LEN]
+
+        if len(script) == 66 and script[0] == OpCodes.OP_ISCOINSTAKE:
+            # Return the expected hash for the hash160 spend address
+            hash256 = script[31:31 + 32]
+            hash160 = ripemd(hash256)
+            script = cls.hash160_to_P2PKH_script(hash160)
+            return sha256(script).digest()[:HASHX_LEN]
+
         return sha256(script).digest()[:HASHX_LEN]
 
     @staticmethod
@@ -4011,3 +4026,62 @@ class Syscoin(AuxPowMixin, Coin):
     RPC_PORT = 8370
     REORG_LIMIT = 2000
     CHUNK_SIZE = 360
+
+
+class Ghost(Coin):
+    NAME = "Ghost"
+    SHORTNAME = "GHOST"
+    NET = "mainnet"
+    BASIC_HEADER_SIZE = 112
+    XPUB_VERBYTES = bytes.fromhex("68df7cbd")
+    XPRV_VERBYTES = bytes.fromhex("8e8ea8ea")
+    P2PKH_VERBYTE = bytes.fromhex("26")
+    P2SH_VERBYTES = (bytes.fromhex("61"),)
+    WIF_BYTE = bytes.fromhex("a6")
+    GENESIS_HASH = ('00001e92daa9a7c945afdf3ce2736862'
+                    'b128f95c8966d3cda112caea98dd95f0')
+    DESERIALIZER = lib_tx.DeserializerGhost
+    TX_COUNT = 102201
+    TX_COUNT_HEIGHT = 566001
+    TX_PER_BLOCK = 2
+    RPC_PORT = 51725
+    REORG_LIMIT = 1000
+
+    @classmethod
+    def genesis_block(cls, block):
+        ''' Check the Genesis block is the right one for this coin.
+            Return the block with it's spendable coinbase txns.
+        '''
+        header = cls.block_header(block, 0)
+        header_hex_hash = hash_to_hex_str(cls.header_hash(header))
+        if header_hex_hash != cls.GENESIS_HASH:
+            raise CoinError(f'genesis block has hash {header_hex_hash} '
+                            f'expected {cls.GENESIS_HASH}')
+
+        return block
+
+
+#class ParticlTestnet(Particl):
+#    SHORTNAME = "tPART"
+#    NET = "testnet"
+#    XPUB_VERBYTES = bytes.fromhex("043587cf")
+#    XPRV_VERBYTES = bytes.fromhex("04358394")
+#    P2PKH_VERBYTE = bytes.fromhex("76")
+#    P2SH_VERBYTES = (bytes.fromhex("7a"))
+#   WIF_BYTE = bytes.fromhex("2e")
+#   GENESIS_HASH = ('0000594ada5310b367443ee0afd4fa3d'
+#                   '0bbd5850ea4e33cdc7d6a904a7ec7c90')
+#   TX_COUNT = 1000837
+#   TX_COUNT_HEIGHT = 940090
+#   TX_PER_BLOCK = 2
+#   RPC_PORT = 51935
+#   REORG_LIMIT = 1000
+
+
+#lass ParticlRegtest(ParticlTestnet):
+#   NET = "regtest"
+#   GENESIS_HASH = ('6cd174536c0ada5bfa3b8fde16b98ae5'
+#                   '08fff6586f2ee24cf866867098f25907')
+#   PEERS = []
+#   TX_COUNT = 1
+#   TX_COUNT_HEIGHT = 1

@@ -67,7 +67,7 @@ class Env(EnvBase):
         self.banner_file = self.default('BANNER_FILE', None)
         self.tor_banner_file = self.default('TOR_BANNER_FILE',
                                             self.banner_file)
-        self.anon_logs = self.boolean('ANON_LOGS', False)
+        self.anon_logs = self.boolean('ANON_LOGS', True)
         self.log_sessions = self.integer('LOG_SESSIONS', 3600)
         self.log_level = self.default('LOG_LEVEL', 'info').upper()
         self.donation_address = self.default('DONATION_ADDRESS', '')
