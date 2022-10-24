@@ -60,13 +60,13 @@ To begin, download the latest ghost-core for x86_64-Linux from [here](https://gi
 
 
 ```
-wget https://github.com/ghost-coin/ghost-core/releases/download/v0.22.0.0/ghost-0.22.0.0-x86_64-pc-linux-gnu.tar.gz
+wget https://github.com/ghost-coin/ghost-core/releases/download/v0.22.1.0/ghost-0.22.1.0-x86_64-pc-linux-gnu.tar.gz
 ```
 
 Now unpack it.
 
 ```
-tar -xvf ghost-0.22.0.0-x86_64-pc-linux-gnu.tar.gz
+tar -xvf ghost-0.22.1.0-x86_64-pc-linux-gnu.tar.gz
 ```
 
 Enter the following command to create .ghost directory and make ghost.conf file
